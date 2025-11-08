@@ -149,7 +149,7 @@ void    ModbusMessage::setServerID(uint8_t serverID) {
 void    ModbusMessage::setFunctionCode(uint8_t FC) {
    if (MM_data.size() < 2) {
     MM_data.resize(2);    // Resize to at least 2 to ensure indices 0 and 1 are valid
-    MM_data[0] = 0;       // Optional:  Invalid server ID as a placeholder
+    MM_data[0] = 248;     // todo 0;       // Optional:  Invalid server ID as a placeholder
   }
   MM_data[1] = FC;        // Safely set the function code
 }
@@ -434,7 +434,7 @@ uint16_t ModbusMessage::get(uint16_t index, vector<uint8_t>& v, uint8_t count) c
 // Data validation methods for the different factory calls
 // 0. serverID and function code - used by all of the below
 Error ModbusMessage::checkServerFC(uint8_t serverID, uint8_t functionCode) {
-  if (serverID == 0)      return INVALID_SERVER;   // Broadcast - not supported here
+  //todo if (serverID == 0)      return INVALID_SERVER;   // Broadcast - not supported here
   if (serverID > 247)     return INVALID_SERVER;   // Reserved server addresses
   if (FCT::getType(functionCode) == FCILLEGAL)  return ILLEGAL_FUNCTION; // FC 0 does not exist
   return SUCCESS;
