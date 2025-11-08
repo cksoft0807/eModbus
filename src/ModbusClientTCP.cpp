@@ -84,7 +84,7 @@ void ModbusClientTCP::begin(int coreID) {
 #else
     // Create unique task name
     char taskName[18];
-    snprintf(taskName, 18, "Modbus%02XTCP", instanceID);
+    snprintf(taskName, 18, "Modbus%02XTCP", instanceCounter);
     // Start task to handle the queue
     xTaskCreatePinnedToCore((TaskFunction_t)&handleConnection, taskName, CLIENT_TASK_STACK, this, 5, &worker, coreID >= 0 ? coreID : tskNO_AFFINITY);
     LOG_D("TCP client worker %s started\n", taskName);
@@ -358,7 +358,7 @@ void ModbusClientTCP::handleConnection(ModbusClientTCP *instance) {
             LOG_D("No onError handler\n");
           }
         }
-        //   set lastHost/lastPort to host/port
+        //   set lastHost/lastPort tp host/port
         instance->MT_lastTarget = request->target;
       } else {
         // Oops. Connection failed
@@ -379,9 +379,6 @@ void ModbusClientTCP::handleConnection(ModbusClientTCP *instance) {
           // Yes. Forward the error code to it
           instance->onError(IP_CONNECTION_FAILED, request->token);
         }
-        // invalidate lastHost/lastPort to force a new connect
-        instance->MT_lastTarget.host = IPAddress(0, 0, 0, 0);
-        instance->MT_lastTarget.port = 0;
       }
       // Clean-up time. 
       if (!doNotPop)
@@ -412,7 +409,17 @@ void ModbusClientTCP::send(RequestEntry *request) {
   ModbusMessage m;
   m.add((const uint8_t *)request->head, 6);
   m.append(request->msg);
-
+  
+  /*
+  Serial.println("Sending request:");
+  for (int i = 0; i < m.size(); i++)
+  {
+    Serial.print(m[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.println();
+  */
+ 
   MT_client.write(m.data(), m.size());
   // Done. Are we?
   MT_client.flush();
@@ -433,9 +440,15 @@ ModbusMessage ModbusClientTCP::receive(RequestEntry *request) {
     // Is there data waiting?
     if (MT_client.available()) {
       // Yes. catch as much as is there and fits into buffer
+      
+      //Serial.println("Received response:");
       while (MT_client.available() && dataPtr < dataLen) {
         data[dataPtr++] = MT_client.read();
+        //Serial.print(data[dataPtr-1], HEX);
+        //Serial.print(" ");
       }
+      //Serial.println();
+      
       // Register data received
       hadData = true;
       // Rewind EOT and timeout timers
@@ -446,6 +459,7 @@ ModbusMessage ModbusClientTCP::receive(RequestEntry *request) {
   // Did we get some data?
   if (hadData) {
     LOG_D("Received response.\n");
+
     HEXDUMP_V("Response packet", data, dataPtr);
     // Yes. check it for validity
     // First transactionID and protocolID shall be identical, length has to match the remainder.
